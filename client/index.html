@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<meta charset='UTF-8'>
+	<title>deadendthrills slideshow</title>
+	<style>
+		* {
+            margin:0;
+            width:100%;
+            height:100%;
+        }
+		
+		.preloader{
+			background-image: url('http://preloaders.net/preloaders/239/Spinning%20gear.gif');
+			background-repeat: no-repeat;
+            background-position: center;
+		}
+		
+		.screenshot {
+			position:absolute;
+			top:0px;
+			left:0px;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+			background-color:#000;
+			display:none;
+        }
+</style>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
+	<script>	
+		
+		// ----------------------------------------------------
+		// Preload Script - http://ditio.net/2010/02/14/jquery-preload-images-tutorial-and-example/
+		// ----------------------------------------------------
+		(function($) {
+			var imgList = [];
+			$.extend({
+				preload: function(imgArr, option) {
+					var setting = $.extend({
+						init: function(loaded, total) {},
+						loaded: function(img, loaded, total) {},
+						loaded_all: function(loaded, total) {}
+					}, option);
+					var total = imgArr.length;
+					var loaded = 0;
+					var errors = 0;
+					
+					setting.init(0, total);
+					for(var i in imgArr) {
+						imgList.push($("<img />")
+							.attr("src", imgArr[i])
+							.bind({
+								error: function() {
+									loaded++;
+									errors++;
+									if(loaded == total) {
+										setting.loaded_all(loaded, errors, total);
+									}
+								},
+								load: function() {
+									loaded++;
+									setting.loaded(this, loaded, total);
+									if(loaded == total) {
+										setting.loaded_all(loaded, errors, total);
+									}
+								}
+							})
+						);
+					}					
+				}
+			});
+		})(jQuery);
+		// ----------------------------------------------------
+	
+		// vars
+		var firstRequest = true;
+		var requestInProgress = false;
+		var running = false;
+		var firstBatch = null;
+		var noofHotImages = 10;
+		var fadeDuration = 3000;
+		var pauseDuration = 12000;
+		
+		// ----------------------------------------------------
+		function startSlideShow() {			
+			// start
+			running = true;
+			performRequest();
+		}
+		
+		// ----------------------------------------------------
+		function onSlideShowLoaded() {
+		
+			$('#slideshow').removeClass('preloader');
+			
+			setInterval(function() 
+			{ 
+				var top = $('#slideshow > div:first');
+				//var seenAmt = 0
+				//if(top.attr('seen') != undefined){
+				//	seenAmt = parseInt(top.attr('seen')) + 1;
+				//}
+				//
+				
+				// remove 'seen' ones
+				$('.seen').remove()				
+				if($('.screenshot').length < noofHotImages){
+					performRequest();
+				}
+				
+				top.fadeOut(fadeDuration)
+					.next()
+					.fadeIn(fadeDuration)
+					.end()
+					.appendTo('#slideshow').addClass('seen');
+									
+			},  	
+			pauseDuration); // time between fades
+			
+			//
+			$('#slideshow').removeClass('preloader');
+			$('#slideshow > div:first').fadeIn(1000);
+			
+			// start getting next batch
+			performRequest();
+		}
+		
+		// ----------------------------------------------------
+		function performRequest()
+		{
+			if(requestInProgress)
+				return;
+				
+			requestInProgress = true;
+			var url = "http://localhost:8080/jsonp?callback=parseRequest";
+			var script = document.createElement('script');
+			script.setAttribute('src', url);
+			document.getElementsByTagName('head')[0].appendChild(script);
+		}
+		
+		// ----------------------------------------------------
+		function parseRequest(response)
+		{
+			var addImage = function(img){
+				var addr = img.src;
+				var imgStr = '<div class="screenshot" style="background-image: url('+addr+');"/></div>'
+				$('#slideshow').append(imgStr)
+			}
+			
+			// preload
+			$.preload(response.images, {
+				init: function(loaded, total) {
+					firstBatch = new Array();
+				},
+				loaded: function(img, loaded, total) {
+				
+					if(firstRequest){
+						firstBatch[firstBatch.length] = img;
+					}
+					else{
+						addImage(img);
+					}
+				},
+				loaded_all: function(loaded, errors, total) {
+				
+					requestInProgress = false;
+					
+					// log results
+					console.log("Finished loading " + total + " images.");
+					if(errors > 0){
+						console.log("[" + errors + " error(s)].");
+					}	
+										
+					if(firstRequest) {
+						for(var i = 0;i<firstBatch.length;++i) {
+							addImage(firstBatch[i]);
+						}						
+						onSlideShowLoaded();
+						firstRequest = false;
+					}
+				}
+			});
+		}
+		
+		// ----------------------------------------------------
+		$(function() {
+			startSlideShow();
+		}); 
+	</script>
+ 
+</head>
+<body>
+	<div id="slideshow" class="preloader"></div>
+</body>
+</html>
