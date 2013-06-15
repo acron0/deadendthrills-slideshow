@@ -5,4 +5,4 @@ A slideshow application displaying random pictures from deadendthrills.com. Desi
 
 Known Issues
 ---
-[*] Server occassionally crashes with 'eof'
+* Server occassionally crashes with 'eof'
