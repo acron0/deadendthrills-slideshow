@@ -6,6 +6,7 @@ import(
 	"text/template"
 	"io/ioutil"
 	"strings"
+	"strconv"
 	"net/http"
 	"container/list"
 	"code.google.com/p/go.net/html"
@@ -84,7 +85,8 @@ func get_random() []string {
 
 func main() {
 
-    fmt.Println("Starting http server ... ")
+    port := 8081
+    fmt.Println("Starting HTTP server at localhost:" + strconv.Itoa(port) + "...")
 	
 	http.Handle("/jsonp", http.HandlerFunc(func (c http.ResponseWriter, req *http.Request) {
 		response := make(map[string]interface{})
@@ -101,7 +103,7 @@ func main() {
 	http.Handle("/", http.HandlerFunc(func (c http.ResponseWriter, req *http.Request) {
 		template.Must(template.ParseFiles("../client/index.html")).Execute(c, req.Host)
 	}))
-	err := http.ListenAndServe("0.0.0.0:8080", nil)
+	err := http.ListenAndServe("0.0.0.0:"+strconv.Itoa(port), nil)
 	if err != nil {
 		fmt.Printf("ListenAndServe Error :" + err.Error())
 	}
