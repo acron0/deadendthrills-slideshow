@@ -1,6 +1,8 @@
 package main
 
 import(
+	"os"
+	"bytes"
 	"fmt"
 	"log"
 	"text/template"
@@ -12,6 +14,23 @@ import(
 	"code.google.com/p/go.net/html"
 	"encoding/json"
 )
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func FindChild(n *html.Node, predicate func(*html.Node) bool) *html.Node{
+	if predicate(n){
+		return n
+	}
+	
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+        result := FindChild(c, predicate)
+		if result != nil {
+			return result
+		}
+    }
+	
+	return nil
+}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -34,7 +53,7 @@ func FindChildren(n *html.Node, predicate func(*html.Node) bool) list.List{
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func get_random() []string {
-	resp, err := http.Get("http://deadendthrills.com/category/random/")
+	resp, err := http.Get("http://deadendthrills.com/random/#")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,31 +67,32 @@ func get_random() []string {
 		log.Fatal(err)
 	}
 	
-	//posts := FindNodesByClass(doc, "post")
-	
-	posts := FindChildren(doc, func(n *html.Node) bool {
-		if n.Type == html.ElementNode && n.Data == "div"{
-			for _, a := range n.Attr {
-				if a.Key == "class" && a.Val == "content" {
-					return true
-				}
-			}
+	noscript := FindChild(doc, func(n *html.Node) bool {
+		if n.Type == html.ElementNode && n.Data == "noscript"{
+			return true
 		}
 		return false
 	})
+
+	nodeData := bytes.NewBufferString(noscript.FirstChild.Data)
+	node, perr := html.Parse(nodeData)
+	if perr != nil {
+		fmt.Println(perr.Error())
+		return nil
+	}
+
+	links := FindChildren(node, func(n *html.Node) bool {
+		return n.Type == html.ElementNode && n.Data == "a"
+	})
 	
-	imgs := make([]string, posts.Len())
+	imgs := make([]string, links.Len())
 	i := 0
-	for e := posts.Front(); e != nil; e = e.Next() {
-		post := e.Value.(*html.Node)
-		links := FindChildren(post, func(n *html.Node) bool {
-			return n.Type == html.ElementNode && n.Data == "a"
-	    })
-		link := links.Front().Value.(*html.Node)
-		
-		for _, a := range link.Attr {
+	for link := links.Front(); link != nil; link = link.Next() {		
+		linkNode := link.Value.(*html.Node)
+		for _, a := range linkNode.Attr {
 			if a.Key == "href" {
 				imgs[i] = a.Val
+				break
 			}
 		}
 		i++
@@ -85,7 +105,33 @@ func get_random() []string {
 
 func main() {
 
-    port := 8081
+	args := os.Args
+    port := 8080
+    test := false
+
+
+    for i := 0; i < len(args); i++{
+    	if(args[i] == "--test"){
+    		test = true
+    	}
+    	if(args[i] == "--port"){
+    		i++
+    		nport, err := strconv.Atoi(args[i])
+    		if(err != nil){
+    			fmt.Println("Invalid port")
+    			return
+    		}
+    		port = nport
+    	}
+    }
+
+	// test mode
+    if(test){
+    	 imgs := get_random()
+    	 fmt.Println(imgs)
+    	 return
+    }
+
     fmt.Println("Starting HTTP server at localhost:" + strconv.Itoa(port) + "...")
 	
 	http.Handle("/jsonp", http.HandlerFunc(func (c http.ResponseWriter, req *http.Request) {
