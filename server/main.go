@@ -87,7 +87,7 @@ func FetchImage(directory string) string {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			for _, a := range n.Attr {
 				if a.Key == "href" {
-					return true
+					return !strings.Contains(a.Val, "imagestore")
 				}
 			}
 		}
