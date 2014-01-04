@@ -127,7 +127,7 @@ func GetRandomImages() []string {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			for _, a := range n.Attr {
 				if a.Key == "href" {
-					return true
+					return !strings.Contains(a.Val, "imagestore")
 				}
 			}
 		}
@@ -150,10 +150,6 @@ func GetRandomImages() []string {
 	for _, linkNode := range linkSlice {
 		for _, a := range linkNode.Attr {
 			if a.Key == "href" {
-
-				if strings.Contains(a.Val, "imagestore") {
-					continue
-				}
 				i--
 				imgs[i] = FetchImage(baseUrl + a.Val)
 				break
